@@ -214,6 +214,7 @@ private extension MessageTextEnrichment {
             return
         }
         
+        let text = attributedString?.string ?? self.text
         detectedURLs = DataDetector.shared.matchURLs(text)
         
         if detectedURLs.isEmpty {

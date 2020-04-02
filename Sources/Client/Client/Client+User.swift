@@ -43,8 +43,15 @@ public extension Client {
     /// - Parameter completion: a completion block with `[User]`.
     @discardableResult
     func update(users: [User], _ completion: @escaping Client.Completion<[User]>) -> URLSessionTask {
-        request(endpoint: .updateUsers(users)) { (result: Result<UpdatedUsersResponse, ClientError>) in
-            completion(result.map(to: \.users).compactMap(to: \.value))
+        request(endpoint: .updateUsers(users)) { [unowned self] (result: Result<UpdatedUsersResponse, ClientError>) in
+            var updatedCompletion = completion
+            let usersResult = result.map(to: \.users)
+            
+            if let currentUserUpdated = usersResult.value?[self.user.id] {
+                updatedCompletion = doBefore(completion) { _ in self.userAtomic.set(currentUserUpdated) }
+            }
+            
+            updatedCompletion(usersResult.compactMap(to: \.value))
         }
     }
     
@@ -71,7 +78,7 @@ public extension Client {
             return .empty
         }
         
-        let completion = doBefore(completion) { [unowned self] in self.user = $0.currentUser }
+        let completion = doBefore(completion) { [unowned self] in self.userAtomic.set($0.currentUser) }
         return request(endpoint: .muteUser(user), completion)
     }
     
